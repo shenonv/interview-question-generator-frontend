@@ -24,13 +24,14 @@ interface InterviewState {
 
   // Actions
   setJobRole: (role: string) => void
-  startSession: () => void
+  startSession: (role?: string) => Promise<void>
   nextQuestion: () => void
   previousQuestion: () => void
   saveAnswer: (index: number, answer: string) => void
   completeSession: () => void
   resetSession: () => void
   loadUserData: () => Promise<void>
+  loadQuestions: (role: string) => Promise<void>
   saveSessionToDatabase: (session: SessionHistory) => Promise<void>
   signIn: (email: string, password: string) => Promise<{ success: boolean; error?: string }>
   signUp: (email: string, password: string, fullName: string) => Promise<{ success: boolean; error?: string }>
@@ -60,15 +61,30 @@ export const useInterviewStore = create<InterviewState>()(
       // Session actions
       setJobRole: (role: string) => set({ jobRole: role }),
 
-      startSession: () => {
-        const { jobRole } = get()
-        if (!jobRole) return
+      startSession: async (role?: string) => {
+        const { jobRole, loadQuestions } = get()
+        const selectedRole = role || jobRole
+        console.log("🔄 Starting session with jobRole:", selectedRole)
+        console.log("🔍 Role parameter:", role)
+        console.log("🔍 Current jobRole from store:", jobRole)
+        console.log("🔍 Selected role:", selectedRole)
+        console.log("🔍 Selected role type:", typeof selectedRole)
+        
+        if (!selectedRole) {
+          console.log("❌ No job role selected")
+          return
+        }
 
         set({
+          jobRole: selectedRole,
           sessionStartTime: new Date(),
           currentQuestionIndex: 0,
-          answers: [],
+          answers: new Array(5).fill(""), // Initialize with empty strings
         })
+
+        // Load questions from backend
+        console.log("🔄 Loading questions for role:", selectedRole)
+        await loadQuestions(selectedRole)
       },
 
       nextQuestion: () => {
@@ -88,7 +104,7 @@ export const useInterviewStore = create<InterviewState>()(
       saveAnswer: (index: number, answer: string) => {
         const { answers } = get()
         const newAnswers = [...answers]
-        newAnswers[index] = answer
+        newAnswers[index] = answer || "" // Ensure we don't save undefined
         set({ answers: newAnswers })
       },
 
@@ -96,7 +112,7 @@ export const useInterviewStore = create<InterviewState>()(
         const { jobRole, answers, questions, sessionStartTime } = get()
         if (!sessionStartTime) return
 
-        const answeredQuestions = answers.filter((answer) => answer.trim() !== "").length
+        const answeredQuestions = answers.filter((answer) => answer && answer.trim() !== "").length
         const completionRate = (answeredQuestions / questions.length) * 100
 
         const session: SessionHistory = {
@@ -161,6 +177,45 @@ export const useInterviewStore = create<InterviewState>()(
         } catch (error) {
           console.error("❌ Load user error:", error)
           set({ user: null, token: null })
+        } finally {
+          set({ isLoading: false })
+        }
+      },
+
+      loadQuestions: async (role: string) => {
+        console.log("🔄 Loading questions for role:", role)
+        console.log("🔍 Role type:", typeof role)
+        console.log("🔍 Role value:", JSON.stringify(role))
+        set({ isLoading: true })
+
+        try {
+          const response = await apiClient.jobRole.getQuestions(role)
+          console.log("Questions response:", response)
+
+          if (response.questions) {
+            // Convert backend questions to frontend format
+            const questions = response.questions.map((q: any, index: number) => ({
+              id: index.toString(),
+              question: q.question || q, // Handle both new format (q.question) and old format (q)
+              context: `Interview question for ${role}`,
+              difficulty: "Medium" as const,
+              category: role,
+              hints: q.hints || [],
+              correctAnswer: q.correctAnswer || undefined,
+            }))
+            
+            console.log("✅ Questions loaded:", questions.length)
+            set({ 
+              questions,
+              answers: new Array(questions.length).fill("") // Initialize answers array with empty strings
+            })
+          } else {
+            console.log("❌ No questions in response")
+            set({ questions: [] })
+          }
+        } catch (error) {
+          console.error("❌ Load questions error:", error)
+          set({ questions: [] })
         } finally {
           set({ isLoading: false })
         }

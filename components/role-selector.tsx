@@ -73,8 +73,10 @@ export function RoleSelector({ selectedRole, onRoleSelect }: RoleSelectorProps) 
       return
     }
 
-    addCustomRole(customRole.trim())
-    onRoleSelect(customRole.trim())
+    const trimmedRole = customRole.trim()
+    console.log("🔍 Adding custom role:", trimmedRole)
+    addCustomRole(trimmedRole)
+    onRoleSelect(trimmedRole)
     setCustomRole("")
     setShowCustomForm(false)
     setOpen(false)
@@ -151,7 +153,11 @@ export function RoleSelector({ selectedRole, onRoleSelect }: RoleSelectorProps) 
                     key={role}
                     value={role}
                     onSelect={(currentValue) => {
-                      onRoleSelect(currentValue === selectedRole ? "" : currentValue)
+                      console.log("🔍 Role selected:", currentValue)
+                      console.log("🔍 Current selectedRole:", selectedRole)
+                      const newRole = currentValue === selectedRole ? "" : currentValue
+                      console.log("🔍 New role to set:", newRole)
+                      onRoleSelect(newRole)
                       setOpen(false)
                     }}
                   >
@@ -169,7 +175,11 @@ export function RoleSelector({ selectedRole, onRoleSelect }: RoleSelectorProps) 
                       key={role}
                       value={role}
                       onSelect={(currentValue) => {
-                        onRoleSelect(currentValue === selectedRole ? "" : currentValue)
+                        console.log("🔍 Custom role selected:", currentValue)
+                        console.log("🔍 Current selectedRole:", selectedRole)
+                        const newRole = currentValue === selectedRole ? "" : currentValue
+                        console.log("🔍 New custom role to set:", newRole)
+                        onRoleSelect(newRole)
                         setOpen(false)
                       }}
                     >

@@ -57,14 +57,32 @@ export const apiClient = {
     },
 
     getQuestions: async (role: string) => {
+      console.log('🔍 Frontend sending role:', role);
+      console.log('🔍 Frontend request body:', JSON.stringify({ role }, null, 2));
+      
+      const requestBody = { role };
+      console.log('🔍 Request body object:', requestBody);
+      console.log('🔍 Request body stringified:', JSON.stringify(requestBody));
+      
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+      
       const response = await fetch(`${BACKEND_URL}/job-role/questions`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ role }),
+        body: JSON.stringify(requestBody),
+        signal: controller.signal,
       });
-      return response.json();
+      
+      clearTimeout(timeoutId);
+      
+      console.log('🔍 Response status:', response.status);
+      const responseData = await response.json();
+      console.log('🔍 Response data:', responseData);
+      
+      return responseData;
     },
 
     getNextQuestion: async (role: string, currentQuestion: string) => {
