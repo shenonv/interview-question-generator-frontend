@@ -1,7 +1,7 @@
 import { create } from "zustand"
 import { persist } from "zustand/middleware"
 import type { Question, SessionHistory } from "./types"
-import { getQuestionsForRole } from "./mock-data"
+import { apiClient } from "./api"
 
 interface InterviewState {
   // Current session state
@@ -20,6 +20,7 @@ interface InterviewState {
   // User state
   user: any
   isLoading: boolean
+  token: string | null
 
   // Actions
   setJobRole: (role: string) => void
@@ -54,20 +55,20 @@ export const useInterviewStore = create<InterviewState>()(
       customRoles: [],
       user: null,
       isLoading: false,
+      token: null,
 
-      // Actions
-      setJobRole: (role: string) => {
-        const questions = getQuestionsForRole(role)
-        set({
-          jobRole: role,
-          questions,
-          answers: new Array(questions.length).fill(""),
-          currentQuestionIndex: 0,
-        })
-      },
+      // Session actions
+      setJobRole: (role: string) => set({ jobRole: role }),
 
       startSession: () => {
-        set({ sessionStartTime: new Date() })
+        const { jobRole } = get()
+        if (!jobRole) return
+
+        set({
+          sessionStartTime: new Date(),
+          currentQuestionIndex: 0,
+          answers: [],
+        })
       },
 
       nextQuestion: () => {
@@ -91,48 +92,47 @@ export const useInterviewStore = create<InterviewState>()(
         set({ answers: newAnswers })
       },
 
-      completeSession: async () => {
-        const { jobRole, questions, answers, sessionHistory, sessionStartTime, saveSessionToDatabase } = get()
+      completeSession: () => {
+        const { jobRole, answers, questions, sessionStartTime } = get()
+        if (!sessionStartTime) return
+
         const answeredQuestions = answers.filter((answer) => answer.trim() !== "").length
         const completionRate = (answeredQuestions / questions.length) * 100
 
-        const sessionAnswers = questions.map((question, index) => ({
-          questionId: question.id,
-          question: question.question,
-          answer: answers[index] || "",
-          difficulty: question.difficulty,
-          category: question.category,
-        }))
-
-        const newSession: SessionHistory = {
+        const session: SessionHistory = {
           id: Date.now().toString(),
           jobRole,
           totalQuestions: questions.length,
           answeredQuestions,
           completionRate,
           date: new Date().toISOString(),
-          duration: sessionStartTime ? Date.now() - sessionStartTime.getTime() : 0,
+          duration: Date.now() - sessionStartTime.getTime(),
+          answers: questions.map((q, i) => ({
+            questionId: q.id,
+            question: q.question,
+            answer: answers[i] || "",
+            difficulty: q.difficulty,
+            category: q.category,
+          })),
         }
 
+        const { sessionHistory } = get()
         set({
-          sessionHistory: [...sessionHistory, newSession],
+          sessionHistory: [...sessionHistory, session],
+          sessionStartTime: null,
         })
 
-        // Save to database if user is authenticated
-        await saveSessionToDatabase({
-          ...newSession,
-          answers: sessionAnswers,
-        } as any)
+        // Save to database
+        get().saveSessionToDatabase(session)
       },
 
       resetSession: () => {
-        const { jobRole } = get()
-        const questions = getQuestionsForRole(jobRole)
         set({
-          questions,
+          jobRole: "",
+          questions: [],
           currentQuestionIndex: 0,
-          answers: new Array(questions.length).fill(""),
-          sessionStartTime: new Date(),
+          answers: [],
+          sessionStartTime: null,
         })
       },
 
@@ -141,22 +141,26 @@ export const useInterviewStore = create<InterviewState>()(
         set({ isLoading: true })
 
         try {
-          const response = await fetch("/api/auth/me")
-          console.log("Auth response status:", response.status)
+          const { token } = get()
+          if (!token) {
+            console.log("❌ No token found")
+            set({ user: null })
+            return
+          }
 
-          const data = await response.json()
-          console.log("Auth response data:", data)
+          const response = await apiClient.auth.getProfile(token)
+          console.log("Auth response data:", response)
 
-          if (data.user) {
-            console.log("✅ User authenticated:", data.user.email)
-            set({ user: data.user })
+          if (response.user) {
+            console.log("✅ User authenticated:", response.user.email)
+            set({ user: response.user })
           } else {
             console.log("❌ No user found")
-            set({ user: null })
+            set({ user: null, token: null })
           }
         } catch (error) {
           console.error("❌ Load user error:", error)
-          set({ user: null })
+          set({ user: null, token: null })
         } finally {
           set({ isLoading: false })
         }
@@ -172,26 +176,19 @@ export const useInterviewStore = create<InterviewState>()(
         set({ isLoading: true })
 
         try {
-          const response = await fetch("/api/auth/signin", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ email, password }),
-          })
+          const response = await apiClient.auth.login(email, password)
+          console.log("Sign in response data:", response)
 
-          console.log("Sign in response status:", response.status)
-
-          const data = await response.json()
-          console.log("Sign in response data:", data)
-
-          if (response.ok && data.success) {
+          if (response.accessToken) {
             console.log("✅ Sign in successful")
-            set({ user: data.user })
+            set({ 
+              user: response.user, 
+              token: response.accessToken 
+            })
             return { success: true }
           } else {
-            console.log("❌ Sign in failed:", data.error)
-            return { success: false, error: data.error || "Login failed" }
+            console.log("❌ Sign in failed:", response.message)
+            return { success: false, error: response.message || "Login failed" }
           }
         } catch (error) {
           console.error("❌ Sign in error:", error)
@@ -202,19 +199,36 @@ export const useInterviewStore = create<InterviewState>()(
       },
 
       signUp: async (email: string, password: string, fullName: string) => {
-        // For now, just redirect to sign in
-        return { success: false, error: "Please use admin credentials to sign in" }
+        console.log("🔄 Signing up...")
+        set({ isLoading: true })
+
+        try {
+          const response = await apiClient.auth.register(email, password, fullName)
+          console.log("Sign up response data:", response)
+
+          if (response.accessToken) {
+            console.log("✅ Sign up successful")
+            set({ 
+              user: response.user, 
+              token: response.accessToken 
+            })
+            return { success: true }
+          } else {
+            console.log("❌ Sign up failed:", response.message)
+            return { success: false, error: response.message || "Registration failed" }
+          }
+        } catch (error) {
+          console.error("❌ Sign up error:", error)
+          return { success: false, error: "Network error" }
+        } finally {
+          set({ isLoading: false })
+        }
       },
 
       signOut: async () => {
         console.log("🔄 Signing out...")
-        try {
-          await fetch("/api/auth/signout", { method: "POST" })
-          set({ user: null, sessionHistory: [], customRoles: [] })
-          console.log("✅ Signed out")
-        } catch (error) {
-          console.error("❌ Sign out error:", error)
-        }
+        set({ user: null, token: null, sessionHistory: [], customRoles: [] })
+        console.log("✅ Signed out")
       },
 
       // Custom roles actions
@@ -232,16 +246,16 @@ export const useInterviewStore = create<InterviewState>()(
         set({ customRoles: newCustomRoles })
       },
 
-      clearCustomRoles: () => {
-        set({ customRoles: [] })
-      },
+      clearCustomRoles: () => set({ customRoles: [] }),
     }),
     {
-      name: "interview-storage",
+      name: "interview-store",
       partialize: (state) => ({
+        user: state.user,
+        token: state.token,
         sessionHistory: state.sessionHistory,
         customRoles: state.customRoles,
       }),
-    },
-  ),
+    }
+  )
 )

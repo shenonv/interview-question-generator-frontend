@@ -5,6 +5,7 @@ export interface Question {
   difficulty: "Easy" | "Medium" | "Hard"
   category: string
   hints: string[]
+  correctAnswer?: string
 }
 
 export interface SessionHistory {

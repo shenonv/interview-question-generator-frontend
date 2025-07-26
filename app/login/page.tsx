@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Eye, EyeOff, Mail, Lock, ArrowLeft, Brain } from "lucide-react"
+import { Eye, EyeOff, Mail, Lock, ArrowLeft, Brain, User } from "lucide-react"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useInterviewStore } from "@/lib/store"
@@ -19,15 +19,17 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState("")
   const [message, setMessage] = useState("")
+  const [isRegistering, setIsRegistering] = useState(false)
   const router = useRouter()
   const searchParams = useSearchParams()
-  const { signIn } = useInterviewStore()
+  const { signIn, signUp } = useInterviewStore()
 
   const redirectPath = searchParams.get("redirect") || "/role-selection"
 
-  const [loginForm, setLoginForm] = useState({
-    email: "admin@interview.app", // Pre-fill for testing
-    password: "admin123", // Pre-fill for testing
+  const [formData, setFormData] = useState({
+    email: "",
+    password: "",
+    fullName: "",
   })
 
   useEffect(() => {
@@ -36,29 +38,35 @@ export default function LoginPage() {
     }
   }, [redirectPath])
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
     setError("")
 
     console.log("🔄 Form submitted with:", {
-      email: loginForm.email,
-      password: loginForm.password,
+      email: formData.email,
+      password: formData.password,
+      fullName: formData.fullName,
     })
 
     try {
-      const result = await signIn(loginForm.email, loginForm.password)
+      let result
+      if (isRegistering) {
+        result = await signUp(formData.email, formData.password, formData.fullName)
+      } else {
+        result = await signIn(formData.email, formData.password)
+      }
 
       if (result.success) {
-        console.log("✅ Login successful, redirecting to:", redirectPath)
+        console.log("✅ Authentication successful, redirecting to:", redirectPath)
         router.push(redirectPath)
         router.refresh()
       } else {
-        console.log("❌ Login failed:", result.error)
-        setError(result.error || "Login failed")
+        console.log("❌ Authentication failed:", result.error)
+        setError(result.error || "Authentication failed")
       }
     } catch (err) {
-      console.error("❌ Login exception:", err)
+      console.error("❌ Authentication exception:", err)
       setError("An unexpected error occurred")
     } finally {
       setIsLoading(false)
@@ -71,52 +79,78 @@ export default function LoginPage() {
         <ThemeToggle />
       </div>
 
-      <div className="container mx-auto px-4 py-16">
-        <div className="max-w-md mx-auto">
-          <Link href="/">
-            <Button variant="ghost" className="mb-8">
+      <div className="flex min-h-screen items-center justify-center p-4">
+        <div className="w-full max-w-md">
+          <div className="mb-8 text-center">
+            <Link href="/" className="inline-flex items-center text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300">
               <ArrowLeft className="mr-2 h-4 w-4" />
               Back to Home
-            </Button>
-          </Link>
+            </Link>
+          </div>
 
-          <Card>
+          <Card className="shadow-xl">
             <CardHeader className="text-center">
-              <div className="flex justify-center mb-4">
-                <Brain className="h-12 w-12 text-blue-600 dark:text-blue-400" />
+              <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-900">
+                <Brain className="h-6 w-6 text-blue-600 dark:text-blue-400" />
               </div>
-              <CardTitle className="text-2xl">Admin Login</CardTitle>
-              <CardDescription>Sign in with admin credentials to access the interview system</CardDescription>
+              <CardTitle className="text-2xl font-bold">
+                {isRegistering ? "Create Account" : "Welcome Back"}
+              </CardTitle>
+              <CardDescription>
+                {isRegistering 
+                  ? "Sign up to start your interview preparation journey" 
+                  : "Sign in to continue your interview preparation"
+                }
+              </CardDescription>
             </CardHeader>
+
             <CardContent>
-              <form onSubmit={handleLogin} className="space-y-4">
+              <form onSubmit={handleSubmit} className="space-y-4">
+                {isRegistering && (
+                  <div className="space-y-2">
+                    <Label htmlFor="fullName">Full Name</Label>
+                    <div className="relative">
+                      <User className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                      <Input
+                        id="fullName"
+                        type="text"
+                        placeholder="Enter your full name"
+                        className="pl-10"
+                        value={formData.fullName}
+                        onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
+                        required={isRegistering}
+                      />
+                    </div>
+                  </div>
+                )}
+
                 <div className="space-y-2">
-                  <Label htmlFor="login-email">Email</Label>
+                  <Label htmlFor="email">Email</Label>
                   <div className="relative">
                     <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                     <Input
-                      id="login-email"
+                      id="email"
                       type="email"
                       placeholder="Enter your email"
                       className="pl-10"
-                      value={loginForm.email}
-                      onChange={(e) => setLoginForm({ ...loginForm, email: e.target.value })}
+                      value={formData.email}
+                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                       required
                     />
                   </div>
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="login-password">Password</Label>
+                  <Label htmlFor="password">Password</Label>
                   <div className="relative">
                     <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                     <Input
-                      id="login-password"
+                      id="password"
                       type={showPassword ? "text" : "password"}
                       placeholder="Enter your password"
                       className="pl-10 pr-10"
-                      value={loginForm.password}
-                      onChange={(e) => setLoginForm({ ...loginForm, password: e.target.value })}
+                      value={formData.password}
+                      onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                       required
                     />
                     <Button
@@ -132,7 +166,10 @@ export default function LoginPage() {
                 </div>
 
                 <Button type="submit" className="w-full" disabled={isLoading}>
-                  {isLoading ? "Signing in..." : "Sign In"}
+                  {isLoading 
+                    ? (isRegistering ? "Creating account..." : "Signing in...") 
+                    : (isRegistering ? "Create Account" : "Sign In")
+                  }
                 </Button>
               </form>
 
@@ -148,8 +185,21 @@ export default function LoginPage() {
                 </Alert>
               )}
 
-              <div className="text-center text-sm text-gray-600 dark:text-gray-400 mt-4">
-                <p>Use the pre-filled admin credentials to sign in</p>
+              <div className="mt-6 text-center">
+                <Button
+                  variant="link"
+                  onClick={() => {
+                    setIsRegistering(!isRegistering)
+                    setError("")
+                    setFormData({ email: "", password: "", fullName: "" })
+                  }}
+                  className="text-sm"
+                >
+                  {isRegistering 
+                    ? "Already have an account? Sign in" 
+                    : "Don't have an account? Sign up"
+                  }
+                </Button>
               </div>
             </CardContent>
           </Card>
