@@ -43,7 +43,7 @@ export default function LoginPage() {
     setIsLoading(true)
     setError("")
 
-    console.log("🔄 Form submitted with:", {
+    console.log(" Form submitted with:", {
       email: formData.email,
       password: formData.password,
       fullName: formData.fullName,
@@ -58,15 +58,15 @@ export default function LoginPage() {
       }
 
       if (result.success) {
-        console.log("✅ Authentication successful, redirecting to:", redirectPath)
+        console.log(" Authentication successful, redirecting to:", redirectPath)
         router.push(redirectPath)
         router.refresh()
       } else {
-        console.log("❌ Authentication failed:", result.error)
+        console.log(" Authentication failed:", result.error)
         setError(result.error || "Authentication failed")
       }
     } catch (err) {
-      console.error("❌ Authentication exception:", err)
+      console.error(" Authentication exception:", err)
       setError("An unexpected error occurred")
     } finally {
       setIsLoading(false)

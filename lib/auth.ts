@@ -4,7 +4,6 @@ export interface AuthUser {
   id: string
   email: string
   fullName: string
-  avatar?: string
 }
 
 // Simple token generation without JWT
@@ -57,7 +56,6 @@ export function verifySimpleToken(token: string): AuthUser | null {
       id: payload.id,
       email: payload.email,
       fullName: payload.fullName,
-      avatar: payload.avatar || "",
     }
   } catch (error) {
     console.error("Token verification error:", error)

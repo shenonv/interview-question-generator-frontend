@@ -254,7 +254,7 @@ export const useInterviewStore = create<InterviewState>()(
       },
 
       signUp: async (email: string, password: string, fullName: string) => {
-        console.log("🔄 Signing up...")
+        console.log(" Signing up...")
         set({ isLoading: true })
 
         try {
@@ -262,18 +262,18 @@ export const useInterviewStore = create<InterviewState>()(
           console.log("Sign up response data:", response)
 
           if (response.accessToken) {
-            console.log("✅ Sign up successful")
+            console.log(" Sign up successful")
             set({ 
               user: response.user, 
               token: response.accessToken 
             })
             return { success: true }
           } else {
-            console.log("❌ Sign up failed:", response.message)
+            console.log(" Sign up failed:", response.message)
             return { success: false, error: response.message || "Registration failed" }
           }
         } catch (error) {
-          console.error("❌ Sign up error:", error)
+          console.error(" Sign up error:", error)
           return { success: false, error: "Network error" }
         } finally {
           set({ isLoading: false })
@@ -281,9 +281,9 @@ export const useInterviewStore = create<InterviewState>()(
       },
 
       signOut: async () => {
-        console.log("🔄 Signing out...")
+        console.log("Signing out...")
         set({ user: null, token: null, sessionHistory: [], customRoles: [] })
-        console.log("✅ Signed out")
+        console.log("Signed out")
       },
 
       // Custom roles actions

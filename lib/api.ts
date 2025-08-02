@@ -15,13 +15,13 @@ export const apiClient = {
       return response.json();
     },
 
-    register: async (email: string, password: string, fullName: string, avatar?: string) => {
+    register: async (email: string, password: string, fullName: string) => {
       const response = await fetch(`${BACKEND_URL}/auth/register`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ email, password, fullName, avatar }),
+        body: JSON.stringify({ email, password, fullName }),
       });
       return response.json();
     },
