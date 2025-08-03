@@ -36,13 +36,21 @@ export function ResultSummary({ questions, answers, jobRole }: ResultSummaryProp
                 <p className="text-sm text-gray-600 dark:text-gray-400">{answers[index] || "No answer provided"}</p>
               </div>
 
+              {/* Show AI evaluation if available */}
+              {question.evaluation && (
+                <div className="bg-purple-50 dark:bg-purple-900/20 p-4 rounded-lg mb-3">
+                  <h4 className="text-sm font-medium text-purple-900 dark:text-purple-100 mb-2">AI Evaluation:</h4>
+                  <p className="text-sm text-purple-800 dark:text-purple-200">{question.evaluation}</p>
+                </div>
+              )}
+
               {question.correctAnswer && (
                 <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-lg mb-3">
                   <h4 className="text-sm font-medium text-green-900 dark:text-green-100 mb-2">Correct Answer:</h4>
                   <p className="text-sm text-green-800 dark:text-green-200">{question.correctAnswer}</p>
                 </div>
               )}
-              {!question.correctAnswer && (
+              {!question.correctAnswer && !question.evaluation && (
                 <div className="bg-yellow-50 dark:bg-yellow-900/20 p-4 rounded-lg mb-3">
                   <h4 className="text-sm font-medium text-yellow-900 dark:text-yellow-100 mb-2">Debug:</h4>
                   <p className="text-sm text-yellow-800 dark:text-yellow-200">No correct answer for question {question.id}</p>

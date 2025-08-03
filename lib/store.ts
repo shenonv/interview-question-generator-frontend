@@ -21,6 +21,10 @@ interface InterviewState {
   user: any
   isLoading: boolean
   token: string | null
+  
+  // Evaluation progress
+  evaluationProgress: number
+  isEvaluating: boolean
 
   // Actions
   setJobRole: (role: string) => void
@@ -57,6 +61,8 @@ export const useInterviewStore = create<InterviewState>()(
       user: null,
       isLoading: false,
       token: null,
+      evaluationProgress: 0,
+      isEvaluating: false,
 
       // Session actions
       setJobRole: (role: string) => set({ jobRole: role }),
@@ -64,14 +70,14 @@ export const useInterviewStore = create<InterviewState>()(
       startSession: async (role?: string) => {
         const { jobRole, loadQuestions } = get()
         const selectedRole = role || jobRole
-        console.log("🔄 Starting session with jobRole:", selectedRole)
-        console.log("🔍 Role parameter:", role)
-        console.log("🔍 Current jobRole from store:", jobRole)
-        console.log("🔍 Selected role:", selectedRole)
-        console.log("🔍 Selected role type:", typeof selectedRole)
+        console.log("Starting session with jobRole:", selectedRole)
+        console.log("Role parameter:", role)
+        console.log("Current jobRole from store:", jobRole)
+        console.log("Selected role:", selectedRole)
+        console.log("Selected role type:", typeof selectedRole)
         
         if (!selectedRole) {
-          console.log("❌ No job role selected")
+          console.log("No job role selected")
           return
         }
 
@@ -83,7 +89,7 @@ export const useInterviewStore = create<InterviewState>()(
         })
 
         // Load questions from backend
-        console.log("🔄 Loading questions for role:", selectedRole)
+        console.log("Loading questions for role:", selectedRole)
         await loadQuestions(selectedRole)
       },
 
@@ -108,12 +114,66 @@ export const useInterviewStore = create<InterviewState>()(
         set({ answers: newAnswers })
       },
 
-      completeSession: () => {
+      completeSession: async () => {
         const { jobRole, answers, questions, sessionStartTime } = get()
         if (!sessionStartTime) return
 
         const answeredQuestions = answers.filter((answer) => answer && answer.trim() !== "").length
         const completionRate = (answeredQuestions / questions.length) * 100
+
+        // Evaluate answers with AI in parallel for better performance
+        console.log("Evaluating answers with AI...")
+        set({ isEvaluating: true, evaluationProgress: 0 })
+        
+        // Create evaluation promises for all answered questions
+        const evaluationPromises = questions.map(async (question, i) => {
+          const answer = answers[i]
+          
+          if (answer && answer.trim() !== "") {
+            try {
+              console.log(`Starting evaluation for answer ${i + 1}/${questions.length}...`)
+              const evaluation = await apiClient.jobRole.evaluateAnswer(
+                jobRole,
+                question.question,
+                answer
+              )
+              console.log(`Answer ${i + 1} evaluated successfully`)
+              return {
+                questionId: question.id,
+                question: question.question,
+                answer: answer,
+                evaluation: evaluation.evaluation || evaluation,
+                difficulty: question.difficulty,
+                category: question.category,
+              }
+            } catch (error) {
+              console.error(`Error evaluating answer ${i + 1}:`, error)
+              return {
+                questionId: question.id,
+                question: question.question,
+                answer: answer,
+                evaluation: "Evaluation failed",
+                difficulty: question.difficulty,
+                category: question.category,
+              }
+            }
+          } else {
+            return {
+              questionId: question.id,
+              question: question.question,
+              answer: "",
+              evaluation: "",
+              difficulty: question.difficulty,
+              category: question.category,
+            }
+          }
+        })
+        
+        // Wait for all evaluations to complete
+        const evaluatedAnswers = await Promise.all(evaluationPromises)
+        
+        // Reset evaluation state
+        set({ isEvaluating: false, evaluationProgress: 0 })
 
         const session: SessionHistory = {
           id: Date.now().toString(),
@@ -123,13 +183,7 @@ export const useInterviewStore = create<InterviewState>()(
           completionRate,
           date: new Date().toISOString(),
           duration: Date.now() - sessionStartTime.getTime(),
-          answers: questions.map((q, i) => ({
-            questionId: q.id,
-            question: q.question,
-            answer: answers[i] || "",
-            difficulty: q.difficulty,
-            category: q.category,
-          })),
+          answers: evaluatedAnswers,
         }
 
         const { sessionHistory } = get()
@@ -153,13 +207,13 @@ export const useInterviewStore = create<InterviewState>()(
       },
 
       loadUserData: async () => {
-        console.log("🔄 Loading user data...")
+        console.log("Loading user data...")
         set({ isLoading: true })
 
         try {
           const { token } = get()
           if (!token) {
-            console.log("❌ No token found")
+            console.log("No token found")
             set({ user: null })
             return
           }
@@ -168,14 +222,14 @@ export const useInterviewStore = create<InterviewState>()(
           console.log("Auth response data:", response)
 
           if (response.user) {
-            console.log("✅ User authenticated:", response.user.email)
+            console.log("User authenticated:", response.user.email)
             set({ user: response.user })
           } else {
-            console.log("❌ No user found")
+            console.log(" No user found")
             set({ user: null, token: null })
           }
         } catch (error) {
-          console.error("❌ Load user error:", error)
+          console.error(" Load user error:", error)
           set({ user: null, token: null })
         } finally {
           set({ isLoading: false })
@@ -183,20 +237,24 @@ export const useInterviewStore = create<InterviewState>()(
       },
 
       loadQuestions: async (role: string) => {
-        console.log("🔄 Loading questions for role:", role)
-        console.log("🔍 Role type:", typeof role)
-        console.log("🔍 Role value:", JSON.stringify(role))
+        console.log("Loading questions for role:", role)
+        console.log(" Role type:", typeof role)
+        console.log(" Role value:", JSON.stringify(role))
         set({ isLoading: true })
 
         try {
+          console.log("About to call apiClient.jobRole.getQuestions...")
           const response = await apiClient.jobRole.getQuestions(role)
-          console.log("Questions response:", response)
+          console.log("Questions response received:", response)
+          console.log(" Response type:", typeof response)
+          console.log(" Response keys:", Object.keys(response))
 
           if (response.questions) {
+            console.log(" Questions array length:", response.questions.length)
             // Convert backend questions to frontend format
             const questions = response.questions.map((q: any, index: number) => ({
               id: index.toString(),
-              question: q.question || q, // Handle both new format (q.question) and old format (q)
+              question: q.question, // Backend returns { question: "text", correctAnswer: "text", hints: [] }
               context: `Interview question for ${role}`,
               difficulty: "Medium" as const,
               category: role,
@@ -204,19 +262,23 @@ export const useInterviewStore = create<InterviewState>()(
               correctAnswer: q.correctAnswer || undefined,
             }))
             
-            console.log("✅ Questions loaded:", questions.length)
+            console.log(" Questions converted:", questions.length)
+            console.log(" First question:", questions[0])
             set({ 
               questions,
               answers: new Array(questions.length).fill("") // Initialize answers array with empty strings
             })
+            console.log(" State updated with questions")
           } else {
-            console.log("❌ No questions in response")
+            console.log(" No questions in response")
+            console.log(" Full response:", response)
             set({ questions: [] })
           }
         } catch (error) {
-          console.error("❌ Load questions error:", error)
+          console.error(" Load questions error:", error)
           set({ questions: [] })
         } finally {
+          console.log(" Setting isLoading to false")
           set({ isLoading: false })
         }
       },
@@ -227,7 +289,7 @@ export const useInterviewStore = create<InterviewState>()(
       },
 
       signIn: async (email: string, password: string) => {
-        console.log("🔄 Signing in...")
+        console.log("Signing in...")
         set({ isLoading: true })
 
         try {
@@ -235,20 +297,20 @@ export const useInterviewStore = create<InterviewState>()(
           console.log("Sign in response data:", response)
 
           if (response.accessToken) {
-            console.log("✅ Sign in successful")
+            console.log(" Sign in successful")
             set({ 
               user: response.user, 
               token: response.accessToken 
             })
             return { success: true }
           } else {
-            console.log("❌ Sign in failed:", response.message)
+            console.log(" Sign in failed:", response.message)
             return { success: false, error: response.message || "Login failed" }
           }
-        } catch (error) {
-          console.error("❌ Sign in error:", error)
-          return { success: false, error: "Network error" }
-        } finally {
+                  } catch (error) {
+            console.error(" Sign in error:", error)
+            return { success: false, error: "Network error" }
+          } finally {
           set({ isLoading: false })
         }
       },

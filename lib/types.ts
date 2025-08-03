@@ -6,6 +6,7 @@ export interface Question {
   category: string
   hints: string[]
   correctAnswer?: string
+  evaluation?: string
 }
 
 export interface SessionHistory {
@@ -20,6 +21,7 @@ export interface SessionHistory {
     questionId: string
     question: string
     answer: string
+    evaluation?: string
     difficulty: string
     category: string
   }>

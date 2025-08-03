@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { QuestionCard } from "@/components/question-card"
 import { ProgressBar } from "@/components/progress-bar"
+import { EvaluationProgress } from "@/components/evaluation-progress"
 import { ArrowLeft, ArrowRight, Home, User } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
@@ -25,6 +26,8 @@ function InterviewContent() {
     completeSession,
     user,
     isLoading,
+    isEvaluating,
+    evaluationProgress,
   } = useInterviewStore()
 
   useEffect(() => {
@@ -45,11 +48,11 @@ function InterviewContent() {
     saveAnswer(currentQuestionIndex, answer)
   }
 
-  const handleNext = () => {
+  const handleNext = async () => {
     if (currentQuestionIndex < questions.length - 1) {
       nextQuestion()
     } else {
-      completeSession()
+      await completeSession()
       router.push("/results")
     }
   }
@@ -77,8 +80,22 @@ function InterviewContent() {
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
             <p>Loading interview questions...</p>
             <p className="text-sm text-gray-500 mt-2">Generating questions for {jobRole}</p>
+            <p className="text-xs text-gray-400 mt-2">This may take up to 2 minutes as we generate AI-powered questions</p>
           </CardContent>
         </Card>
+      </div>
+    )
+  }
+
+  if (isEvaluating) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <EvaluationProgress 
+          isEvaluating={isEvaluating}
+          progress={evaluationProgress}
+          totalQuestions={questions.length}
+          completedQuestions={Math.floor((evaluationProgress / 100) * questions.length)}
+        />
       </div>
     )
   }

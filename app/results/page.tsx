@@ -4,6 +4,7 @@ import { useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { ResultSummary } from "@/components/result-summary"
+import { EvaluationProgress } from "@/components/evaluation-progress"
 import { ArrowLeft, RotateCcw, BarChart3, Home, User } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
@@ -13,7 +14,7 @@ import { AuthGuard } from "@/components/auth-guard"
 
 function ResultsContent() {
   const router = useRouter()
-  const { jobRole, questions, answers, resetSession, user } = useInterviewStore()
+  const { jobRole, questions, answers, resetSession, user, isEvaluating, evaluationProgress } = useInterviewStore()
 
   useEffect(() => {
     if (!jobRole) {
@@ -81,7 +82,16 @@ function ResultsContent() {
             </CardContent>
           </Card>
 
-          <ResultSummary questions={questions} answers={answers} jobRole={jobRole} />
+          {isEvaluating ? (
+            <EvaluationProgress 
+              isEvaluating={isEvaluating}
+              progress={evaluationProgress}
+              totalQuestions={questions.length}
+              completedQuestions={Math.floor((evaluationProgress / 100) * questions.length)}
+            />
+          ) : (
+            <ResultSummary questions={questions} answers={answers} jobRole={jobRole} />
+          )}
 
           <div className="flex flex-wrap gap-4 justify-center mt-8">
             <Button onClick={handleRetry} size="lg">
