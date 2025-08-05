@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { QuestionCard } from "@/components/question-card"
 import { ProgressBar } from "@/components/progress-bar"
+import { EvaluationProgress } from "@/components/evaluation-progress"
 import { ArrowLeft, ArrowRight, Home, User } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
@@ -24,6 +25,9 @@ function InterviewContent() {
     saveAnswer,
     completeSession,
     user,
+    isLoading,
+    isEvaluating,
+    evaluationProgress,
   } = useInterviewStore()
 
   useEffect(() => {
@@ -32,15 +36,23 @@ function InterviewContent() {
     }
   }, [jobRole, router])
 
+  // Auto-load questions if not already loaded
+  useEffect(() => {
+    if (jobRole && questions.length === 0 && !isLoading) {
+      // This will be handled by the store's startSession function
+      console.log("Job role selected but no questions loaded")
+    }
+  }, [jobRole, questions.length, isLoading])
+
   const handleAnswerSave = (answer: string) => {
     saveAnswer(currentQuestionIndex, answer)
   }
 
-  const handleNext = () => {
+  const handleNext = async () => {
     if (currentQuestionIndex < questions.length - 1) {
       nextQuestion()
     } else {
-      completeSession()
+      await completeSession()
       router.push("/results")
     }
   }
@@ -48,12 +60,55 @@ function InterviewContent() {
   const currentQuestion = questions[currentQuestionIndex]
   const progress = ((currentQuestionIndex + 1) / questions.length) * 100
 
-  if (!jobRole || !currentQuestion) {
+  if (!jobRole) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Card>
           <CardContent className="p-6">
-            <p>Loading interview session...</p>
+            <p>No job role selected. Redirecting...</p>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
+  if (isLoading || questions.length === 0) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Card>
+          <CardContent className="p-6 text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <p>Loading interview questions...</p>
+            <p className="text-sm text-gray-500 mt-2">Generating questions for {jobRole}</p>
+            <p className="text-xs text-gray-400 mt-2">This may take up to 2 minutes as we generate AI-powered questions</p>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
+  if (isEvaluating) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <EvaluationProgress 
+          isEvaluating={isEvaluating}
+          progress={evaluationProgress}
+          totalQuestions={questions.length}
+          completedQuestions={Math.floor((evaluationProgress / 100) * questions.length)}
+        />
+      </div>
+    )
+  }
+
+  if (!currentQuestion) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Card>
+          <CardContent className="p-6 text-center">
+            <p>No questions available for this role.</p>
+            <Button onClick={() => router.push("/role-selection")} className="mt-4">
+              Select Different Role
+            </Button>
           </CardContent>
         </Card>
       </div>

@@ -5,6 +5,8 @@ export interface Question {
   difficulty: "Easy" | "Medium" | "Hard"
   category: string
   hints: string[]
+  correctAnswer?: string
+  evaluation?: string
 }
 
 export interface SessionHistory {
@@ -19,6 +21,7 @@ export interface SessionHistory {
     questionId: string
     question: string
     answer: string
+    evaluation?: string
     difficulty: string
     category: string
   }>
@@ -28,5 +31,4 @@ export interface AuthUser {
   id: string
   email: string
   fullName: string
-  avatar?: string
 }

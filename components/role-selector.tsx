@@ -2,8 +2,8 @@
 
 import type React from "react"
 
-import { useState } from "react"
-import { Check, ChevronsUpDown, Plus, X } from "lucide-react"
+import { useState, useEffect } from "react"
+import { Check, ChevronsUpDown, Plus, X, Loader2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { jobRoles } from "@/lib/mock-data"
+import { apiClient } from "@/lib/api"
 import { useInterviewStore } from "@/lib/store"
 
 interface RoleSelectorProps {
@@ -25,9 +25,34 @@ export function RoleSelector({ selectedRole, onRoleSelect }: RoleSelectorProps) 
   const [showCustomForm, setShowCustomForm] = useState(false)
   const [customRole, setCustomRole] = useState("")
   const [error, setError] = useState("")
+  const [jobRoles, setJobRoles] = useState<string[]>([])
+  const [loading, setLoading] = useState(true)
+  const [apiError, setApiError] = useState("")
   const { customRoles, addCustomRole, removeCustomRole } = useInterviewStore()
 
-  // Combine default roles with custom roles
+  // Fetch job roles from backend
+  useEffect(() => {
+    const fetchJobRoles = async () => {
+      try {
+        setLoading(true)
+        const response = await apiClient.jobRole.getRoles()
+        if (response.roles) {
+          setJobRoles(response.roles)
+        } else {
+          setApiError("Invalid response format")
+        }
+      } catch (error) {
+        setApiError("Failed to load job roles")
+        console.error("Error fetching job roles:", error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchJobRoles()
+  }, [])
+
+  // Combine database roles with custom roles from store
   const allRoles = [...jobRoles, ...customRoles]
 
   const handleAddCustomRole = () => {
@@ -48,8 +73,10 @@ export function RoleSelector({ selectedRole, onRoleSelect }: RoleSelectorProps) 
       return
     }
 
-    addCustomRole(customRole.trim())
-    onRoleSelect(customRole.trim())
+    const trimmedRole = customRole.trim()
+    console.log("🔍 Adding custom role:", trimmedRole)
+    addCustomRole(trimmedRole)
+    onRoleSelect(trimmedRole)
     setCustomRole("")
     setShowCustomForm(false)
     setOpen(false)
@@ -67,10 +94,32 @@ export function RoleSelector({ selectedRole, onRoleSelect }: RoleSelectorProps) 
 
   return (
     <div className="space-y-4">
+      {/* API Error Alert */}
+      {apiError && (
+        <Alert variant="destructive">
+          <AlertDescription>
+            {apiError}. Please check your backend connection.
+          </AlertDescription>
+        </Alert>
+      )}
+
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
-          <Button variant="outline" role="combobox" aria-expanded={open} className="w-full justify-between">
-            {selectedRole || "Select a job role..."}
+          <Button 
+            variant="outline" 
+            role="combobox" 
+            aria-expanded={open} 
+            className="w-full justify-between"
+            disabled={loading}
+          >
+            {loading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Loading roles...
+              </>
+            ) : (
+              selectedRole || "Select a job role..."
+            )}
             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
           </Button>
         </PopoverTrigger>
@@ -80,11 +129,20 @@ export function RoleSelector({ selectedRole, onRoleSelect }: RoleSelectorProps) 
             <CommandList>
               <CommandEmpty>
                 <div className="text-center py-4">
-                  <p className="text-sm text-gray-500 mb-2">No job role found.</p>
-                  <Button variant="outline" size="sm" onClick={() => setShowCustomForm(true)} className="text-xs">
-                    <Plus className="mr-1 h-3 w-3" />
-                    Add Custom Role
-                  </Button>
+                  {loading ? (
+                    <div className="flex items-center justify-center gap-2">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <p className="text-sm text-gray-500">Loading job roles...</p>
+                    </div>
+                  ) : (
+                    <>
+                      <p className="text-sm text-gray-500 mb-2">No job role found.</p>
+                      <Button variant="outline" size="sm" onClick={() => setShowCustomForm(true)} className="text-xs">
+                        <Plus className="mr-1 h-3 w-3" />
+                        Add Custom Role
+                      </Button>
+                    </>
+                  )}
                 </div>
               </CommandEmpty>
 
@@ -95,7 +153,11 @@ export function RoleSelector({ selectedRole, onRoleSelect }: RoleSelectorProps) 
                     key={role}
                     value={role}
                     onSelect={(currentValue) => {
-                      onRoleSelect(currentValue === selectedRole ? "" : currentValue)
+                      console.log("🔍 Role selected:", currentValue)
+                      console.log("🔍 Current selectedRole:", selectedRole)
+                      const newRole = currentValue === selectedRole ? "" : currentValue
+                      console.log("🔍 New role to set:", newRole)
+                      onRoleSelect(newRole)
                       setOpen(false)
                     }}
                   >
@@ -113,7 +175,11 @@ export function RoleSelector({ selectedRole, onRoleSelect }: RoleSelectorProps) 
                       key={role}
                       value={role}
                       onSelect={(currentValue) => {
-                        onRoleSelect(currentValue === selectedRole ? "" : currentValue)
+                        console.log("🔍 Custom role selected:", currentValue)
+                        console.log("🔍 Current selectedRole:", selectedRole)
+                        const newRole = currentValue === selectedRole ? "" : currentValue
+                        console.log("🔍 New custom role to set:", newRole)
+                        onRoleSelect(newRole)
                         setOpen(false)
                       }}
                     >

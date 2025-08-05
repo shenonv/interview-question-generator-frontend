@@ -20,7 +20,7 @@ export function DashboardCharts({ sessionHistory }: DashboardChartsProps) {
   const chartData = sessionHistory.map((session, index) => ({
     session: `Session ${index + 1}`,
     completionRate: session.completionRate,
-    totalQuestions: session.totalQuestions,
+    totalQuestions: session.totalQuestions, 
     date: new Date(session.date).toLocaleDateString(),
   }))
 

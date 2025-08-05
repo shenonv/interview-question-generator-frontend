@@ -16,11 +16,18 @@ function RoleSelectionContent() {
   const router = useRouter()
   const { setJobRole, startSession, user, customRoles } = useInterviewStore()
 
-  const handleStartInterview = () => {
+  const handleStartInterview = async () => {
+    console.log("🔍 handleStartInterview called")
+    console.log("🔍 selectedRole:", selectedRole)
+    console.log("🔍 selectedRole type:", typeof selectedRole)
+    console.log("🔍 selectedRole length:", selectedRole?.length)
+    
     if (selectedRole) {
-      setJobRole(selectedRole)
-      startSession()
+      console.log("🔄 Starting interview with role:", selectedRole)
+      await startSession(selectedRole)
       router.push("/interview")
+    } else {
+      console.log("❌ No role selected")
     }
   }
 
@@ -59,7 +66,14 @@ function RoleSelectionContent() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              <RoleSelector selectedRole={selectedRole} onRoleSelect={setSelectedRole} />
+              <RoleSelector 
+                selectedRole={selectedRole} 
+                onRoleSelect={(role) => {
+                  console.log("🔍 onRoleSelect called with:", role)
+                  console.log("🔍 role type:", typeof role)
+                  setSelectedRole(role)
+                }} 
+              />
 
               {/* Information about question types */}
               <div className="grid md:grid-cols-2 gap-4">
