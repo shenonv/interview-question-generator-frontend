@@ -93,7 +93,7 @@ export function RoleSelector({ selectedRole, onRoleSelect }: RoleSelectorProps) 
   const isCustomRole = (role: string) => customRoles.includes(role)
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       {/* API Error Alert */}
       {apiError && (
         <Alert variant="destructive">
@@ -109,7 +109,7 @@ export function RoleSelector({ selectedRole, onRoleSelect }: RoleSelectorProps) 
             variant="outline" 
             role="combobox" 
             aria-expanded={open} 
-            className="w-full justify-between"
+            className="w-full h-12 text-lg justify-between"
             disabled={loading}
           >
             {loading ? (
@@ -123,7 +123,7 @@ export function RoleSelector({ selectedRole, onRoleSelect }: RoleSelectorProps) 
             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-full p-0">
+        <PopoverContent className="w-[400px] p-0">
           <Command>
             <CommandInput placeholder="Search job roles..." />
             <CommandList>
@@ -215,7 +215,7 @@ export function RoleSelector({ selectedRole, onRoleSelect }: RoleSelectorProps) 
 
       {/* Custom Role Form */}
       {showCustomForm && (
-        <div className="border rounded-lg p-4 bg-blue-50 dark:bg-blue-900/20">
+        <div className="border rounded-lg p-6 bg-blue-50 dark:bg-blue-900/20">
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <Label htmlFor="custom-role" className="text-sm font-medium">
@@ -285,7 +285,7 @@ export function RoleSelector({ selectedRole, onRoleSelect }: RoleSelectorProps) 
 
       {/* Display selected custom role info */}
       {selectedRole && isCustomRole(selectedRole) && (
-        <div className="bg-green-50 dark:bg-green-900/20 p-3 rounded-lg">
+        <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-lg">
           <div className="flex items-center gap-2">
             <Badge variant="secondary" className="text-xs">
               Custom Role
