@@ -86,6 +86,8 @@ export const useInterviewStore = create<InterviewState>()(
           sessionStartTime: new Date(),
           currentQuestionIndex: 0,
           answers: new Array(5).fill(""), // Initialize with empty strings
+          isEvaluating: false,
+          evaluationProgress: 0,
         })
 
         // Load questions from backend
@@ -121,12 +123,15 @@ export const useInterviewStore = create<InterviewState>()(
         const answeredQuestions = answers.filter((answer) => answer && answer.trim() !== "").length
         const completionRate = (answeredQuestions / questions.length) * 100
 
-        // Evaluate answers with AI in parallel for better performance
+        // Evaluate answers with AI with progress tracking
         console.log("Evaluating answers with AI...")
         set({ isEvaluating: true, evaluationProgress: 0 })
         
-        // Create evaluation promises for all answered questions
-        const evaluationPromises = questions.map(async (question, i) => {
+        // Evaluate answers sequentially to properly track progress
+        const evaluatedAnswers = []
+        
+        for (let i = 0; i < questions.length; i++) {
+          const question = questions[i]
           const answer = answers[i]
           
           if (answer && answer.trim() !== "") {
@@ -138,39 +143,45 @@ export const useInterviewStore = create<InterviewState>()(
                 answer
               )
               console.log(`Answer ${i + 1} evaluated successfully`)
-              return {
+              
+              evaluatedAnswers.push({
                 questionId: question.id,
                 question: question.question,
                 answer: answer,
                 evaluation: evaluation.evaluation || evaluation,
                 difficulty: question.difficulty,
                 category: question.category,
-              }
+              })
             } catch (error) {
               console.error(`Error evaluating answer ${i + 1}:`, error)
-              return {
+              
+              evaluatedAnswers.push({
                 questionId: question.id,
                 question: question.question,
                 answer: answer,
                 evaluation: "Evaluation failed",
                 difficulty: question.difficulty,
                 category: question.category,
-              }
+              })
             }
           } else {
-            return {
+            evaluatedAnswers.push({
               questionId: question.id,
               question: question.question,
               answer: "",
               evaluation: "",
               difficulty: question.difficulty,
               category: question.category,
-            }
+            })
           }
-        })
-        
-        // Wait for all evaluations to complete
-        const evaluatedAnswers = await Promise.all(evaluationPromises)
+          
+          // Update progress after each evaluation (successful, failed, or empty)
+          const newProgress = Math.min(100, ((i + 1) / questions.length) * 100)
+          set({ evaluationProgress: newProgress })
+          
+          // Add a small delay to make progress more visible
+          await new Promise(resolve => setTimeout(resolve, 100))
+        }
         
         // Reset evaluation state
         set({ isEvaluating: false, evaluationProgress: 0 })
@@ -203,6 +214,8 @@ export const useInterviewStore = create<InterviewState>()(
           currentQuestionIndex: 0,
           answers: [],
           sessionStartTime: null,
+          isEvaluating: false,
+          evaluationProgress: 0,
         })
       },
 
