@@ -40,7 +40,7 @@ function RoleSelectionContent() {
       </div>
 
       <div className="container mx-auto px-4 py-16">
-        <div className="max-w-2xl mx-auto">
+        <div className="max-w-4xl mx-auto">
           <div className="flex justify-between items-center mb-8">
             <Link href="/dashboard">
               <Button variant="ghost">
@@ -65,7 +65,7 @@ function RoleSelectionContent() {
                 your career path
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-6">
+            <CardContent className="space-y-8">
               <RoleSelector 
                 selectedRole={selectedRole} 
                 onRoleSelect={(role) => {
