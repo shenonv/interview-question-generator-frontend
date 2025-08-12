@@ -144,6 +144,14 @@ export const useInterviewStore = create<InterviewState>()(
               )
               console.log(`Answer ${i + 1} evaluated successfully`)
               
+              // Update question with AI evaluation so UI can render it
+              set((state) => {
+                const updatedQuestions = state.questions.map((q, idx) =>
+                  idx === i ? { ...q, evaluation: (evaluation as any).evaluation || (evaluation as any) } : q
+                )
+                return { questions: updatedQuestions }
+              })
+
               evaluatedAnswers.push({
                 questionId: question.id,
                 question: question.question,
@@ -155,6 +163,14 @@ export const useInterviewStore = create<InterviewState>()(
             } catch (error) {
               console.error(`Error evaluating answer ${i + 1}:`, error)
               
+              // Mark evaluation failure in question for visibility
+              set((state) => {
+                const updatedQuestions = state.questions.map((q, idx) =>
+                  idx === i ? { ...q, evaluation: "Evaluation failed" } : q
+                )
+                return { questions: updatedQuestions }
+              })
+
               evaluatedAnswers.push({
                 questionId: question.id,
                 question: question.question,
