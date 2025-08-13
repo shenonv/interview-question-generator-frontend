@@ -4,7 +4,6 @@ import { useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { ResultSummary } from "@/components/result-summary"
-import { EvaluationProgress } from "@/components/evaluation-progress"
 import { ArrowLeft, RotateCcw, BarChart3, Home, User } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
@@ -14,13 +13,15 @@ import { AuthGuard } from "@/components/auth-guard"
 
 function ResultsContent() {
   const router = useRouter()
-  const { jobRole, questions, answers, resetSession, user, isEvaluating, evaluationProgress } = useInterviewStore()
+  const { jobRole, questions, answers, resetSession, user, isEvaluating } = useInterviewStore()
 
   useEffect(() => {
-    if (!jobRole) {
-      router.push("/role-selection")
+    // If coming directly from evaluation start, questions may already be present
+    // Only redirect if we truly have no context
+    if (!jobRole && questions.length === 0) {
+      router.replace("/role-selection")
     }
-  }, [jobRole, router])
+  }, [jobRole, questions.length, router])
 
   const handleRetry = () => {
     resetSession()
@@ -82,16 +83,8 @@ function ResultsContent() {
             </CardContent>
           </Card>
 
-          {isEvaluating ? (
-            <EvaluationProgress 
-              isEvaluating={isEvaluating}
-              progress={evaluationProgress}
-              totalQuestions={questions.length}
-              completedQuestions={Math.floor((evaluationProgress / 100) * questions.length)}
-            />
-          ) : (
-            <ResultSummary questions={questions} answers={answers} jobRole={jobRole} />
-          )}
+          {/* Always show results on this page. Evaluation happens on /evaluation */}
+          <ResultSummary questions={questions} answers={answers} jobRole={jobRole} />
 
           <div className="flex flex-wrap gap-4 justify-center mt-8">
             <Button onClick={handleRetry} size="lg">
