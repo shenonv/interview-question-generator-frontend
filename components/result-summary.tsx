@@ -11,6 +11,7 @@ interface ResultSummaryProps {
 export function ResultSummary({ questions, answers, jobRole }: ResultSummaryProps) {
   console.log("ResultSummary questions:", questions)
   console.log("Questions with correct answers:", questions.filter(q => q.correctAnswer))
+  const PLACEHOLDER_CORRECT = 'A comprehensive answer would cover the key aspects of this question. Consider the role requirements, best practices, and provide specific examples.'
   
   return (
     <Card>
@@ -44,13 +45,13 @@ export function ResultSummary({ questions, answers, jobRole }: ResultSummaryProp
                 </div>
               )}
 
-              {question.correctAnswer && (
+              {question.correctAnswer && question.correctAnswer !== PLACEHOLDER_CORRECT && (
                 <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-lg mb-3">
                   <h4 className="text-sm font-medium text-green-900 dark:text-green-100 mb-2">Correct Answer:</h4>
                   <p className="text-sm text-green-800 dark:text-green-200">{question.correctAnswer}</p>
                 </div>
               )}
-              {!question.correctAnswer && !question.evaluation && (
+              {(!question.correctAnswer || question.correctAnswer === PLACEHOLDER_CORRECT) && !question.evaluation && (
                 <div className="bg-yellow-50 dark:bg-yellow-900/20 p-4 rounded-lg mb-3">
                   <h4 className="text-sm font-medium text-yellow-900 dark:text-yellow-100 mb-2">Debug:</h4>
                   <p className="text-sm text-yellow-800 dark:text-yellow-200">No correct answer for question {question.id}</p>

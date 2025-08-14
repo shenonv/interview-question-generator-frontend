@@ -31,10 +31,11 @@ function InterviewContent() {
   } = useInterviewStore()
 
   useEffect(() => {
-    if (!jobRole) {
-      router.push("/role-selection")
+    // Redirect only when we truly have no context to run an interview
+    if (!jobRole && questions.length === 0 && !isLoading) {
+      router.replace("/role-selection")
     }
-  }, [jobRole, router])
+  }, [jobRole, questions.length, isLoading, router])
 
   // Auto-load questions if not already loaded
   useEffect(() => {
@@ -52,8 +53,9 @@ function InterviewContent() {
     if (currentQuestionIndex < questions.length - 1) {
       nextQuestion()
     } else {
-      await completeSession()
-      router.push("/results")
+      // Start evaluation and navigate to evaluation screen
+      completeSession()
+      router.replace("/evaluation")
     }
   }
 
@@ -87,17 +89,9 @@ function InterviewContent() {
     )
   }
 
+  // While evaluating, redirect user to dedicated evaluation page
   if (isEvaluating) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <EvaluationProgress 
-          isEvaluating={isEvaluating}
-          progress={evaluationProgress}
-          totalQuestions={questions.length}
-          completedQuestions={Math.floor((evaluationProgress / 100) * questions.length)}
-        />
-      </div>
-    )
+    router.replace("/evaluation")
   }
 
   if (!currentQuestion) {
